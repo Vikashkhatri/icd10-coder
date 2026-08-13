@@ -12,13 +12,15 @@ Model selection is controlled by the MODEL_BACKEND env var:
 import os
 import time
 from pathlib import Path
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 from model_baseline import TfidfIcdCoder, ARTIFACT_PATH as TFIDF_ARTIFACT_PATH
 
 app = Flask(__name__)
 CORS(app)  # allow the demo webpage (different origin) to call this API
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 MODEL_BACKEND = os.environ.get("MODEL_BACKEND", "tfidf")
 _coder = None
@@ -44,6 +46,11 @@ def get_coder():
             _coder = TfidfIcdCoder()
             _coder.save()
     return _coder
+
+
+@app.route("/", methods=["GET"])
+def demo_page():
+    return send_from_directory(PROJECT_ROOT, "demo.html")
 
 
 @app.route("/health", methods=["GET"])

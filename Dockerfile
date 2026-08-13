@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY data/ ./data/
 COPY app/ ./app/
+COPY demo.html .
 
 # Pre-build the TF-IDF index at build time so the container starts instantly
 RUN cd app && python model_baseline.py
