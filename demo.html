@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ICD-10 Auto-Coding Assistant — Demo</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 40px 20px;
+  }
+  .container { max-width: 780px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); margin-bottom: 28px; font-size: 0.95rem; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem; }
+  textarea {
+    width: 100%;
+    min-height: 110px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    resize: vertical;
+  }
+  textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+  .examples { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .example-btn {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: 20px;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .example-btn:hover { background: #eef2ff; border-color: var(--primary); color: var(--primary); }
+  .row { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
+  select {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  button.submit {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 11px 22px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.submit:hover { background: var(--primary-dark); }
+  button.submit:disabled { background: #93c5fd; cursor: wait; }
+  .status { font-size: 0.85rem; color: var(--muted); margin-left: 4px; }
+  .results { margin-top: 8px; }
+  .code-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .code-row:first-child { border-color: var(--primary); background: #eff6ff; }
+  .code-left { display: flex; align-items: baseline; gap: 10px; }
+  .code { font-weight: 700; font-family: "SF Mono", Consolas, monospace; font-size: 0.95rem; }
+  .desc { color: var(--text); font-size: 0.9rem; }
+  .confidence { font-size: 0.8rem; color: var(--muted); font-family: "SF Mono", Consolas, monospace; }
+  .meta { font-size: 0.8rem; color: var(--muted); margin-top: 14px; }
+  .error { color: #dc2626; font-size: 0.9rem; padding: 12px; background: #fef2f2; border-radius: 8px; }
+  .footer-note { font-size: 0.78rem; color: var(--muted); margin-top: 24px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>ICD-10 Auto-Coding Assistant</h1>
+  <div class="subtitle">Live demo — paste a clinical note, get suggested ICD-10-CM diagnosis codes</div>
+
+  <div class="card">
+    <label for="apiUrl">API endpoint</label>
+    <input id="apiUrl" type="text" value="https://icd10-coder.onrender.com/predict"
+      style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:0.85rem; font-family: 'SF Mono', Consolas, monospace; margin-bottom:16px;">
+
+    <label for="note">Clinical note</label>
+    <textarea id="note" placeholder="e.g. Patient presents with productive cough, fever, and shortness of breath. Chest x-ray shows lower lobe infiltrate. Diagnosis: community acquired pneumonia.">45 year old male with type 2 diabetes mellitus, poorly controlled, presenting for routine follow-up.</textarea>
+
+    <div class="examples">
+      <button class="example-btn" data-note="45 year old male with type 2 diabetes mellitus, poorly controlled, presenting for routine follow-up.">Diabetes</button>
+      <button class="example-btn" data-note="Patient presents with productive cough, fever of 101.5F, and shortness of breath for 3 days. Chest x-ray shows right lower lobe infiltrate. Diagnosis: community acquired pneumonia.">Pneumonia</button>
+      <button class="example-btn" data-note="Patient with long-standing hypertension, blood pressure 162/98 today, asymptomatic, here for medication management.">Hypertension</button>
+      <button class="example-btn" data-note="46-year-old male presents for followup of hypothyroidism, elevated TSH, started on Levothroid.">Hypothyroidism</button>
+    </div>
+
+    <div class="row">
+      <button class="submit" id="submitBtn" onclick="runPrediction()">Get suggested codes</button>
+      <select id="topK">
+        <option value="3">Top 3</option>
+        <option value="5" selected>Top 5</option>
+        <option value="10">Top 10</option>
+      </select>
+      <span class="status" id="status"></span>
+    </div>
+  </div>
+
+  <div class="card" id="resultsCard" style="display:none;">
+    <div class="results" id="results"></div>
+    <div class="meta" id="meta"></div>
+  </div>
+
+  <div class="footer-note">
+    Free-tier deployment (Render) — first request after inactivity may take 30-60s to wake up.
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.example-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('note').value = btn.dataset.note;
+  });
+});
+
+async function runPrediction() {
+  const apiUrl = document.getElementById('apiUrl').value.trim();
+  const note = document.getElementById('note').value.trim();
+  const topK = document.getElementById('topK').value;
+  const btn = document.getElementById('submitBtn');
+  const status = document.getElementById('status');
+  const resultsCard = document.getElementById('resultsCard');
+  const resultsDiv = document.getElementById('results');
+  const metaDiv = document.getElementById('meta');
+
+  if (!note) { alert('Please enter a clinical note.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Predicting...';
+  status.textContent = 'Waking up server (may take up to a minute on first request)...';
+  resultsCard.style.display = 'none';
+
+  try {
+    const start = performance.now();
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note: note, top_k: parseInt(topK) })
+    });
+    const elapsed = Math.round(performance.now() - start);
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Server returned ${res.status}: ${errText}`);
+    }
+
+    const data = await res.json();
+    resultsDiv.innerHTML = data.suggested_codes.map((c, i) => `
+      <div class="code-row">
+        <div class="code-left">
+          <span class="code">${c.code}</span>
+          <span class="desc">${c.description}</span>
+        </div>
+        <span class="confidence">${c.confidence}</span>
+      </div>
+    `).join('');
+
+    metaDiv.textContent = `Model: ${data.model_backend} · Model latency: ${data.model_latency_ms}ms · Round-trip: ${elapsed}ms`;
+    resultsCard.style.display = 'block';
+    status.textContent = '';
+  } catch (err) {
+    resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+    resultsCard.style.display = 'block';
+    status.textContent = '';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Get suggested codes';
+  }
+}
+</script>
+</body>
+</html>

@@ -13,10 +13,12 @@ import os
 import time
 from pathlib import Path
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 from model_baseline import TfidfIcdCoder, ARTIFACT_PATH as TFIDF_ARTIFACT_PATH
 
 app = Flask(__name__)
+CORS(app)  # allow the demo webpage (different origin) to call this API
 
 MODEL_BACKEND = os.environ.get("MODEL_BACKEND", "tfidf")
 _coder = None
