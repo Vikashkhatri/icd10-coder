@@ -1,0 +1,9 @@
+flask==3.0.3
+pandas==2.2.2
+scikit-learn==1.5.1
+scipy==1.13.1
+joblib==1.4.2
+gunicorn==22.0.0
+# Uncomment the two lines below only if using MODEL_BACKEND=semantic
+# sentence-transformers==3.0.1
+# torch==2.3.1
